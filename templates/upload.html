@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dataset Upload & Ingestion{% endblock %}
+
+{% block content %}
+<div style="max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:24px;">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size:16px;font-weight:700;">Ingest Neuroimaging Cohort</h3>
+        <p style="color:var(--text-muted);font-size:12.5px;margin-top:4px;">
+          Upload 2D MRI slices (T1w/T2w) along with an optional clinical metadata CSV file.
+        </p>
+      </div>
+      <button id="btn-run-demo" class="btn btn-secondary" style="font-size:12px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        Load Pre-configured Demo Cohort
+      </button>
+    </div>
+
+    <div class="form-group" style="margin-top:8px;">
+      <label class="form-label" for="dataset-name-input">Dataset / Cohort Name</label>
+      <input type="text" id="dataset-name-input" class="form-input" placeholder="e.g., ADNI3_Baseline_T1w_Screening" value="Neuro_Cohort_T1w_Audit">
+    </div>
+
+    <!-- Drag and Drop Box -->
+    <div id="drop-zone" style="border:2px dashed var(--border-medium);border-radius:var(--radius-md);padding:40px 20px;text-align:center;background:var(--bg-subtle);cursor:pointer;transition:var(--transition);">
+      <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp,.csv" style="display:none;">
+      
+      <div style="width:52px;height:52px;background:var(--primary-subtle);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--primary);">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      </div>
+      
+      <h4 style="font-size:15px;font-weight:800;margin-bottom:6px;color:var(--text-main);">Drag and drop MRI scans & metadata CSV here</h4>
+      <p style="color:var(--text-muted);font-size:12.5px;margin-bottom:16px;">
+        Supports PNG, JPG, TIFF, BMP image slices and CSV metadata files.
+      </p>
+      
+      <button type="button" class="btn btn-secondary" onclick="document.getElementById('file-input').click()">
+        Browse Local Files
+      </button>
+    </div>
+
+    <!-- Selected Files Box -->
+    <div style="margin-top:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text-muted);">Selected Files Queue</span>
+      </div>
+      <div id="selected-files-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:16px;">
+          No files selected yet. Drop files above or load the demo cohort.
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;justify-content:flex-end;">
+      <button id="btn-start-upload-analysis" class="btn btn-primary" style="padding:12px 24px;" disabled>
+        Start AI/ML Quality Screening
+      </button>
+    </div>
+  </div>
+
+  <!-- Guidelines & Requirements -->
+  <div class="card" style="background:var(--bg-subtle);">
+    <h4 style="font-size:13.5px;font-weight:800;margin-bottom:12px;color:var(--primary);">Supported Metadata Columns (Optional CSV)</h4>
+    <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:12px;font-size:12px;color:var(--text-muted);line-height:1.6;">
+      <div>• <code>filename</code>: Matching image filename (e.g. scan_01.png)</div>
+      <div>• <code>subject_id</code>: Unique patient / subject identifier</div>
+      <div>• <code>age</code> & <code>sex</code>: Demographic fields for bias audits</div>
+      <div>• <code>scanner_vendor</code>: Siemens / GE / Philips</div>
+      <div>• <code>magnetic_field_t</code>: 1.5 or 3.0 Tesla field strength</div>
+      <div>• <code>voxel_spacing</code> & <code>slice_thickness_mm</code>: Acquisition geometry</div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="/static/js/upload.js"></script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block page_title %}AI Research Assistant (Google Gemini Real-Time QA){% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:18px;max-width:1100px;margin:0 auto;">
+
+  <!-- Live Google Studio API Key Banner -->
+  <div id="assistant-key-banner" class="card" style="padding:14px 20px;background:var(--primary-subtle);border:1px solid rgba(2, 132, 199, 0.25);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:20px;">✨</span>
+      <div>
+        <strong style="color:var(--text-main);font-size:13.5px;display:block;">Google AI Studio Live Real-Time Q&A Engine</strong>
+        <span style="font-size:12px;color:var(--text-muted);">Enter your API key to ask any custom neuroimaging, artifact, MRI physics, or ML question in real-time.</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="openApiKeyModal()" style="font-size:12px;padding:6px 14px;">
+      🔑 Configure API Key
+    </button>
+  </div>
+
+  <!-- Header Context Selector -->
+  <div class="card" style="padding:14px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:13px;font-weight:700;color:var(--text-muted);">Active Context Cohort:</span>
+        <select id="assistant-dataset-select" class="form-select" style="width:300px;">
+          {% for d in all_datasets %}
+            <option value="{{ d.id }}" {% if dataset and dataset.id == d.id %}selected{% endif %}>{{ d.name }} (Readiness: {{ d.readiness_score }}/100)</option>
+          {% endfor %}
+          {% if not all_datasets %}<option value="">General Neuroimaging QC Mode</option>{% endif %}
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--accent-purple);font-weight:700;">
+        <span>⚡ Live Gemini 2.5 Flash</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Suggested Query Chips -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button class="suggested-prompt-chip btn btn-secondary" style="font-size:12px;padding:6px 14px;border-radius:20px;" data-prompt="Why were certain scans flagged as Unusable, and what are the risks to downstream deep learning models?">
+      💡 Why are scans Unusable?
+    </button>
+    <button class="suggested-prompt-chip btn btn-secondary" style="font-size:12px;padding:6px 14px;border-radius:20px;" data-prompt="How does Grad-CAM locate motion ghosting and ringing in MRI slices?">
+      ✨ Explain Grad-CAM Heatmaps
+    </button>
+    <button class="suggested-prompt-chip btn btn-secondary" style="font-size:12px;padding:6px 14px;border-radius:20px;" data-prompt="What harmonization steps (e.g. ComBat, N4 bias field correction) should I apply for mixed Siemens/GE protocols?">
+      🔧 Scanner Harmonization Steps
+    </button>
+    <button class="suggested-prompt-chip btn btn-secondary" style="font-size:12px;padding:6px 14px;border-radius:20px;" data-prompt="Explain the Isolation Forest anomaly detection algorithm used in Module 3.">
+      🔬 Module 3 Anomaly Method
+    </button>
+  </div>
+
+  <!-- Chat Container -->
+  <div class="chat-container">
+    <div id="chat-messages" class="chat-messages">
+      <div class="chat-bubble assistant">
+        <strong>Gemini QC Assistant:</strong><br>
+        Hello! I am your real-time NeuroData Quality AI Research Assistant powered by Google Gemini. I have live access to your active cohort's PyTorch classifications, OpenCV artifact metrics, Isolation Forest anomalies, and composite readiness score. Ask me any real-time question about dataset cleaning, MRI physics, or training recommendations!
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" class="form-input" placeholder="Ask any real-time question about scan quality, artifacts, preprocessing, or ML training...">
+      <button id="chat-send-btn" class="btn btn-primary" style="padding:0 24px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="/static/js/assistant.js"></script>
+{% endblock %}

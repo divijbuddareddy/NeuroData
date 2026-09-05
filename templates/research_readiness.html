@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block page_title %}Research-Readiness Assessment{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Cohort Switcher -->
+  <div class="card" style="padding:16px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <label for="dataset-select" style="font-size:13px;font-weight:600;color:var(--text-secondary);">Active Cohort:</label>
+        <select id="dataset-select" class="form-select" style="width:280px;" onchange="window.location.href='/research-readiness?dataset_id=' + this.value">
+          {% for d in all_datasets %}
+            <option value="{{ d.id }}" {% if dataset and dataset.id == d.id %}selected{% endif %}>{{ d.name }} ({{ d.total_scans }} scans)</option>
+          {% endfor %}
+          {% if not all_datasets %}<option>No datasets evaluated yet</option>{% endif %}
+        </select>
+      </div>
+
+      {% if dataset %}
+      <div style="display:flex;align-items:center;gap:12px;">
+        <a href="/report/{{ dataset.id }}" class="btn btn-secondary" style="font-size:12px;padding:6px 12px;">View Report</a>
+        <a href="/api/report/{{ dataset.id }}/pdf" class="btn btn-primary" style="font-size:12px;padding:6px 12px;">Download PDF</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if dataset %}
+  <!-- Main Readiness Overview Box -->
+  <div class="card" style="background:linear-gradient(135deg, var(--bg-surface), var(--bg-subtle));border:1px solid var(--border-light);padding:28px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;">
+      <div>
+        <div style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--primary);text-transform:uppercase;margin-bottom:8px;">
+          Research Readiness Model Ensemble
+        </div>
+        <h2 style="font-size:24px;font-weight:800;margin-bottom:8px;color:var(--text-main);">
+          Dataset Readiness: 
+          <span style="color:{% if dataset.readiness_label == 'Ready' %}var(--accent-emerald){% elif dataset.readiness_label == 'Requires Cleaning' %}var(--accent-amber){% else %}var(--accent-rose){% endif %};">
+            {{ dataset.readiness_label }}
+          </span>
+        </h2>
+        <p style="color:var(--text-muted);font-size:13.5px;max-width:640px;line-height:1.5;">
+          Composite evaluation measuring whether this neuroimaging cohort is mathematically and methodologically ready for machine learning model training.
+        </p>
+      </div>
+
+      <!-- Readiness Dial Gauge -->
+      <div style="text-align:center;background:var(--bg-subtle);border-radius:var(--radius-md);padding:18px 28px;border:1px solid var(--border-light);min-width:180px;">
+        <div style="font-size:36px;font-weight:800;color:{% if dataset.readiness_label == 'Ready' %}var(--accent-emerald){% elif dataset.readiness_label == 'Requires Cleaning' %}var(--accent-amber){% else %}var(--accent-rose){% endif %};line-height:1;">
+          {{ dataset.readiness_score }}
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Score / 100</div>
+        <div style="margin-top:10px;">
+          <span class="badge {% if dataset.readiness_label == 'Ready' %}badge-ready{% elif dataset.readiness_label == 'Requires Cleaning' %}badge-cleaning{% else %}badge-notready{% endif %}" style="font-size:11px;">
+            {{ dataset.readiness_label }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Factor Importance Breakdown & Gemini Insights -->
+  <div class="grid-cols-2">
+
+    <!-- Feature Contribution Breakdown -->
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:16px;color:var(--text-main);display:flex;align-items:center;gap:8px;">
+        <span>📊</span> Factor Contribution Breakdown
+      </h3>
+
+      {% set bd = dataset.to_dict().readiness_breakdown %}
+      <div style="display:flex;flex-direction:column;gap:14px;font-size:12.5px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-weight:700;color:var(--text-main);">Image Quality & Class Proportions</span>
+            <span><strong>{{ bd.get('image_quality_score', 0) }}</strong> / 35.0 pts</span>
+          </div>
+          <div style="height:6px;background:var(--bg-subtle);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:{{ (bd.get('image_quality_score', 0)/35.0)*100 }}%;background:var(--accent-emerald);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-weight:700;color:var(--text-main);">SNR & Motion Distortion Suppression</span>
+            <span><strong>{{ bd.get('snr_motion_score', 0) }}</strong> / 20.0 pts</span>
+          </div>
+          <div style="height:6px;background:var(--bg-subtle);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:{{ (bd.get('snr_motion_score', 0)/20.0)*100 }}%;background:var(--primary);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-weight:700;color:var(--text-main);">Metadata Completeness</span>
+            <span><strong>{{ bd.get('metadata_score', 0) }}</strong> / 20.0 pts</span>
+          </div>
+          <div style="height:6px;background:var(--bg-subtle);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:{{ (bd.get('metadata_score', 0)/20.0)*100 }}%;background:var(--accent-blue);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-weight:700;color:var(--text-main);">Cohort Outlier Isolation</span>
+            <span><strong>{{ bd.get('outlier_score', 0) }}</strong> / 15.0 pts</span>
+          </div>
+          <div style="height:6px;background:var(--bg-subtle);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:{{ (bd.get('outlier_score', 0)/15.0)*100 }}%;background:var(--accent-amber);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-weight:700;color:var(--text-main);">Multi-Site & Scanner Consistency</span>
+            <span><strong>{{ bd.get('consistency_score', 0) }}</strong> / 10.0 pts</span>
+          </div>
+          <div style="height:6px;background:var(--bg-subtle);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:{{ (bd.get('consistency_score', 0)/10.0)*100 }}%;background:var(--accent-purple);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gemini AI Synthesis & Risk Analysis -->
+    <div class="card" style="border:1px solid rgba(124, 58, 237, 0.3);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">✨</span>
+        <h3 style="font-size:15px;font-weight:800;color:var(--accent-purple);">Gemini AI Research Synthesis</h3>
+      </div>
+      
+      <p style="font-size:13px;color:var(--text-main);line-height:1.6;margin-bottom:16px;">
+        {{ dataset.gemini_summary or "The dataset exhibits moderate quality with areas requiring targeted cleaning before model training." }}
+      </p>
+
+      {% if dataset.gemini_risks %}
+      <div style="background:var(--bg-subtle);border-radius:var(--radius-sm);border:1px solid var(--border-light);padding:12px;font-size:12px;line-height:1.6;color:var(--text-muted);">
+        <strong style="color:var(--accent-rose);display:block;margin-bottom:4px;">Downstream ML Risk Factors:</strong>
+        {{ dataset.gemini_risks }}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Actionable Cleaning Checklist -->
+  <div class="card">
+    <h3 style="font-size:15px;font-weight:800;margin-bottom:14px;color:var(--primary);">
+      Actionable Preprocessing & Cleaning Checklist
+    </h3>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+      {% if dataset.gemini_recommendations %}
+        {% for line in dataset.gemini_recommendations.split('\n') %}
+          {% if line.strip() %}
+          <label style="display:flex;align-items:flex-start;gap:10px;background:var(--bg-subtle);padding:10px 14px;border-radius:6px;border:1px solid var(--border-light);cursor:pointer;">
+            <input type="checkbox" style="margin-top:3px;accent-color:var(--primary);">
+            <span style="color:var(--text-main);font-weight:500;">{{ line.strip('-• ') }}</span>
+          </label>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div style="color:var(--text-muted);font-size:12.5px;">No specific exclusions recommended. Dataset passes research threshold.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <div class="card" style="text-align:center;padding:60px 20px;">
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px;">No Dataset Available</h3>
+    <button onclick="triggerDemoAnalysis()" class="btn btn-primary">Run Sample Analysis (15 Scans)</button>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block page_title %}Scan-Level Quality Inspector & Grad-CAM{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Header Controls / Cohort Selector -->
+  <div class="card" style="padding:16px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <label for="dataset-select" style="font-size:13px;font-weight:600;color:var(--text-secondary);">Active Cohort:</label>
+        <select id="dataset-select" class="form-select" style="width:280px;" onchange="window.location.href='/scan-quality?dataset_id=' + this.value">
+          {% for d in all_datasets %}
+            <option value="{{ d.id }}" {% if dataset and dataset.id == d.id %}selected{% endif %}>{{ d.name }} ({{ d.total_scans }} scans)</option>
+          {% endfor %}
+          {% if not all_datasets %}
+            <option>No datasets evaluated yet</option>
+          {% endif %}
+        </select>
+      </div>
+
+      {% if dataset %}
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="badge {% if dataset.readiness_label == 'Ready' %}badge-ready{% elif dataset.readiness_label == 'Requires Cleaning' %}badge-cleaning{% else %}badge-notready{% endif %}">
+          {{ dataset.readiness_label }} ({{ dataset.readiness_score }}/100)
+        </span>
+        <a href="/report/{{ dataset.id }}" class="btn btn-secondary" style="font-size:12px;padding:6px 12px;">View Report</a>
+        <a href="/api/report/{{ dataset.id }}/pdf" class="btn btn-primary" style="font-size:12px;padding:6px 12px;">Download PDF</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if dataset and scans %}
+  <!-- Viewer Layout: Scans List + Interactive Canvas Inspector -->
+  <div style="display:grid;grid-template-columns:320px 1fr;gap:24px;">
+
+    <!-- Left: Scans Sidebar List -->
+    <div class="card" style="padding:16px;max-height:760px;display:flex;flex-direction:column;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span>Scans Queue ({{ scans|length }})</span>
+        <span style="font-size:11px;color:var(--text-muted);">Select to inspect</span>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px;">
+        {% for s in scans %}
+        <div class="scan-item-card {% if loop.first %}active-scan{% endif %}" 
+             id="scan-card-{{ s.id }}"
+             onclick="selectScan({{ s.id }})"
+             style="background:var(--bg-subtle);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;transition:var(--transition);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-main);">{{ s.filename }}</span>
+            <span class="badge {% if s.quality_label == 'Good' %}badge-good{% elif s.quality_label == 'Acceptable' %}badge-acceptable{% elif s.quality_label == 'Poor' %}badge-poor{% else %}badge-unusable{% endif %}" style="font-size:10px;padding:2px 6px;">
+              {{ s.quality_label }}
+            </span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
+            <span>SNR: {{ s.snr }} dB</span>
+            <span>Motion: {{ s.motion_score }}</span>
+            {% if s.is_outlier %}<span style="color:var(--accent-rose);font-weight:700;">OUTLIER</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Right: Detailed Scan Inspector -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Viewer and Grad-CAM Panel -->
+      <div class="card" style="padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 id="current-scan-title" style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--text-main);">{{ scans[0].filename }}</h3>
+            <span id="current-scan-subtitle" style="font-size:12px;color:var(--text-muted);">Subject: {{ scans[0].subject_id }} • {{ scans[0].scanner_vendor }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button id="btn-toggle-gradcam" class="btn btn-purple active" style="font-size:12px;padding:6px 14px;">
+              ✨ Grad-CAM Attention
+            </button>
+          </div>
+        </div>
+
+        <div class="viewer-layout">
+          <!-- Canvas Viewport -->
+          <div class="viewer-viewport">
+            <canvas id="mri-viewer-canvas" class="viewer-canvas"></canvas>
+            
+            <!-- Floating Controls Bar -->
+            <div class="viewer-controls-bar">
+              <div class="slider-group">
+                <label>Grad-CAM Alpha:</label>
+                <input type="range" id="slider-gradcam-opacity" min="0" max="1" step="0.05" value="0.5" class="slider-input" style="width:70px;">
+              </div>
+              <div class="slider-group">
+                <label>Brightness:</label>
+                <input type="range" id="slider-brightness" min="50" max="180" step="5" value="100" class="slider-input" style="width:60px;">
+              </div>
+              <div class="slider-group">
+                <label>Contrast:</label>
+                <input type="range" id="slider-contrast" min="50" max="200" step="5" value="100" class="slider-input" style="width:60px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Scan Diagnostics Sidecard -->
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <!-- Quality Prediction Box -->
+            <div style="background:var(--bg-subtle);border-radius:var(--radius-sm);border:1px solid var(--border-light);padding:14px;">
+              <div style="font-size:11px;text-transform:uppercase;color:var(--text-faint);font-weight:700;margin-bottom:8px;">
+                PyTorch CNN Classification
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span id="diag-quality-badge" class="badge badge-good" style="font-size:13px;padding:4px 12px;">Good</span>
+                <span id="diag-confidence" style="font-size:14px;font-weight:800;color:var(--primary);">94.5% Conf.</span>
+              </div>
+              
+              <!-- Softmax Probability Bars -->
+              <div id="diag-prob-bars" style="display:flex;flex-direction:column;gap:6px;font-size:11px;">
+                <!-- Populated dynamically via JS -->
+              </div>
+            </div>
+
+            <!-- Quantitative Artifact Metrics -->
+            <div style="background:var(--bg-subtle);border-radius:var(--radius-sm);border:1px solid var(--border-light);padding:14px;display:flex;flex-direction:column;gap:8px;font-size:12px;">
+              <div style="font-size:11px;text-transform:uppercase;color:var(--text-faint);font-weight:700;">
+                Artifact & Motion Metrics
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Signal-to-Noise (SNR):</span>
+                <strong id="diag-snr" style="font-family:var(--font-mono);color:var(--text-main);">-- dB</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Contrast-to-Noise (CNR):</span>
+                <strong id="diag-cnr" style="font-family:var(--font-mono);color:var(--text-main);">--</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Laplacian Blur Score:</span>
+                <strong id="diag-blur" style="font-family:var(--font-mono);color:var(--text-main);">--</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Motion Ghosting Index:</span>
+                <strong id="diag-motion" style="font-family:var(--font-mono);color:var(--text-main);">--</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted);">Cohort Anomaly:</span>
+                <strong id="diag-anomaly" style="font-family:var(--font-mono);">--</strong>
+              </div>
+            </div>
+
+            <!-- Clinical & Acquisition Metadata -->
+            <div style="background:var(--bg-subtle);border-radius:var(--radius-sm);border:1px solid var(--border-light);padding:14px;display:flex;flex-direction:column;gap:6px;font-size:11.5px;">
+              <div style="font-size:11px;text-transform:uppercase;color:var(--text-faint);font-weight:700;">
+                Metadata & Geometry
+              </div>
+              <div style="color:var(--text-muted);">Subject: <strong id="diag-meta-sub" style="color:var(--text-main);">--</strong> (Age <span id="diag-meta-age">--</span>, <span id="diag-meta-sex">--</span>)</div>
+              <div style="color:var(--text-muted);">Scanner: <strong id="diag-meta-scanner" style="color:var(--text-main);">--</strong> (<span id="diag-meta-field">--</span>T)</div>
+              <div style="color:var(--text-muted);">Voxel: <strong id="diag-meta-voxel" style="color:var(--text-main);">--</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:60px 20px;">
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px;">No Scans Evaluated Yet</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">
+      Upload an MRI dataset or click the button below to load the synthetic 15-scan sample cohort.
+    </p>
+    <button onclick="triggerDemoAnalysis()" class="btn btn-primary">
+      Run Sample Analysis (15 Scans)
+    </button>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="/static/js/viewer.js"></script>
+<script>
+  let scansData = {{ scans_dict|tojson|safe if scans_dict else '[]' }};
+  let currentViewer = null;
+
+  function selectScan(scanId) {
+    const scan = scansData.find(s => s.id === scanId);
+    if (!scan) return;
+
+    // Highlight active card in left list
+    document.querySelectorAll('.scan-item-card').forEach(c => {
+      c.style.borderColor = 'var(--border-light)';
+      c.style.background = 'var(--bg-subtle)';
+    });
+    const activeEl = document.getElementById('scan-card-' + scanId);
+    if (activeEl) {
+      activeEl.style.borderColor = 'var(--primary)';
+      activeEl.style.background = 'var(--primary-subtle)';
+    }
+
+    // Update Header
+    document.getElementById('current-scan-title').innerText = scan.filename;
+    document.getElementById('current-scan-subtitle').innerText = `Subject: ${scan.subject_id} • ${scan.scanner_vendor} (${scan.site_id})`;
+
+    // Update PyTorch Classification & Confidence
+    const badgeEl = document.getElementById('diag-quality-badge');
+    badgeEl.className = 'badge ' + (
+      scan.quality_label === 'Good' ? 'badge-good' :
+      (scan.quality_label === 'Acceptable' ? 'badge-acceptable' :
+      (scan.quality_label === 'Poor' ? 'badge-poor' : 'badge-unusable'))
+    );
+    badgeEl.innerText = scan.quality_label;
+    document.getElementById('diag-confidence').innerText = `${Math.round(scan.confidence * 100)}% Conf.`;
+
+    // Render Prob bars
+    const probContainer = document.getElementById('diag-prob-bars');
+    const probs = scan.quality_probs || {};
+    probContainer.innerHTML = Object.entries(probs).map(([k, v]) => `
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+          <span>${k}</span>
+          <span>${Math.round(v * 100)}%</span>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:${v*100}%;background:${k==='Good'?'var(--accent-emerald)':(k==='Acceptable'?'var(--accent-amber)':(k==='Poor'?'var(--accent-rose)':'#ef4444'))};"></div>
+        </div>
+      </div>
+    `).join('');
+
+    // Update Artifact Metrics
+    document.getElementById('diag-snr').innerText = `${scan.snr} dB`;
+    document.getElementById('diag-cnr').innerText = scan.cnr;
+    document.getElementById('diag-blur').innerText = scan.blur_score;
+    document.getElementById('diag-motion').innerText = scan.motion_score;
+    document.getElementById('diag-anomaly').innerText = scan.is_outlier ? `OUTLIER (${scan.outlier_score})` : `Normal (${scan.outlier_score})`;
+    document.getElementById('diag-anomaly').style.color = scan.is_outlier ? 'var(--accent-rose)' : 'var(--accent-emerald)';
+
+    // Update Metadata
+    document.getElementById('diag-meta-sub').innerText = scan.subject_id;
+    document.getElementById('diag-meta-age').innerText = scan.subject_age || 'N/A';
+    document.getElementById('diag-meta-sex').innerText = scan.subject_sex || 'N/A';
+    document.getElementById('diag-meta-scanner').innerText = scan.scanner_vendor;
+    document.getElementById('diag-meta-field').innerText = scan.magnetic_field_t;
+    document.getElementById('diag-meta-voxel').innerText = scan.voxel_spacing;
+
+    // Load in Canvas
+    if (currentViewer) {
+      currentViewer.loadImages(scan.preview_url, scan.gradcam_url);
+    } else {
+      currentViewer = new MRISliceViewer('mri-viewer-canvas', scan.preview_url, scan.gradcam_url);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (scansData && scansData.length > 0) {
+      selectScan(scansData[0].id);
+    }
+  });
+</script>
+{% endblock %}

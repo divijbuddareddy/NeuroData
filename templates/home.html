@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block page_title %}Platform Overview{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Hero Banner Card -->
+  <div class="card" style="background:linear-gradient(135deg, var(--bg-surface), var(--bg-subtle));border:1px solid var(--border-light);padding:32px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
+      <div style="max-width:740px;">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:var(--primary-subtle);color:var(--primary);padding:4px 12px;border-radius:20px;font-size:11.5px;font-weight:700;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">
+          NeuroData Quality AI • Explainable QC
+        </div>
+        <h2 style="font-size:26px;font-weight:800;letter-spacing:-0.5px;margin-bottom:12px;line-height:1.2;color:var(--text-main);">
+          Explainable Neuroimaging Dataset Quality Control & Research-Readiness Prediction
+        </h2>
+        <p style="color:var(--text-muted);font-size:14px;line-height:1.6;">
+          An automated pre-training screening system that classifies MRI scan quality, detects motion artifacts and spatial anomalies, audits clinical metadata consistency, calculates research-readiness scores, and generates explainable Grad-CAM heatmaps and Gemini-synthesized audit reports with real-time AI assistance.
+        </p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:200px;">
+        <a href="/upload" class="btn btn-primary" style="padding:12px 20px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Upload MRI Dataset
+        </a>
+        <button id="btn-run-demo-hero" onclick="triggerDemoAnalysis()" class="btn btn-secondary" style="padding:12px 20px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Preload Sample Cohort
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Metrics Row -->
+  <div class="grid-cols-4">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Audited Cohorts</span>
+        <span style="color:var(--primary);">📁</span>
+      </div>
+      <div class="card-value">{{ total_datasets or 0 }}</div>
+      <div class="card-subtitle">Datasets processed in local database</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Total MRI Scans</span>
+        <span style="color:var(--accent-blue);">🧠</span>
+      </div>
+      <div class="card-value">{{ total_scans or 0 }}</div>
+      <div class="card-subtitle">Scans evaluated across all 5 AI/ML modules</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Latest Readiness</span>
+        <span style="color:var(--accent-emerald);">⚡</span>
+      </div>
+      <div class="card-value">
+        {% if latest_run %}
+          {{ latest_run.readiness_score }}<span style="font-size:16px;color:var(--text-faint);">/100</span>
+        {% else %}
+          --
+        {% endif %}
+      </div>
+      <div class="card-subtitle">
+        {% if latest_run %}
+          <span class="badge {% if latest_run.readiness_label == 'Ready' %}badge-ready{% elif latest_run.readiness_label == 'Requires Cleaning' %}badge-cleaning{% else %}badge-notready{% endif %}" style="font-size:10px;padding:2px 8px;">{{ latest_run.readiness_label }}</span>
+        {% else %}
+          No audits yet
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card" onclick="openApiKeyModal()" style="cursor:pointer;">
+      <div class="card-header">
+        <span class="card-title">Google Gemini Live</span>
+        <span style="color:var(--accent-purple);">✨</span>
+      </div>
+      <div class="card-value" style="font-size:18px;font-weight:800;color:var(--accent-purple);">Active Q&A</div>
+      <div class="card-subtitle">Click to configure Studio API key</div>
+    </div>
+  </div>
+
+  <!-- Core AI/ML Pipeline Grid (Modules 1 to 5 + Grad-CAM + Gemini) -->
+  <div>
+    <h3 style="font-size:16px;font-weight:800;margin-bottom:16px;color:var(--text-main);display:flex;align-items:center;gap:8px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);"></span>
+      Multimodal AI/ML Quality Pipeline Architecture
+    </h3>
+
+    <div class="grid-cols-3">
+      <div class="card">
+        <div style="font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:6px;">MODULE 1 • PYTORCH</div>
+        <h4 style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--text-main);">Deep Image-Quality Classifier</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;">
+          Custom CNN architecture with transfer learning classifying scans into Good, Acceptable, Poor, and Unusable with calibrated softmax confidence scores.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size:11.5px;font-weight:700;color:var(--accent-blue);margin-bottom:6px;">MODULE 2 • OPENCV & NUMPY</div>
+        <h4 style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--text-main);">Artifact & Motion Engine</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;">
+          Quantifies Laplacian blur variance, SNR/CNR foreground-background contrast, k-space motion ghosting, intensity bias fields, and FOV truncations.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size:11.5px;font-weight:700;color:var(--accent-emerald);margin-bottom:6px;">MODULE 3 • SCIKIT-LEARN</div>
+        <h4 style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--text-main);">Cohort Anomaly Detector</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;">
+          Isolation Forest & PCA dimensionality reduction across texture, spatial moments, and frequency embeddings to pinpoint corrupted or abnormal acquisitions.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size:11.5px;font-weight:700;color:var(--accent-amber);margin-bottom:6px;">MODULE 4 • PANDAS & STATS</div>
+        <h4 style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--text-main);">Metadata & Bias Audit</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;">
+          Validates voxel spacing, magnetic field strength (1.5T vs 3T), scanner manufacturers (Siemens/GE/Philips), demographic sex/age balance, and test leakage risks.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size:11.5px;font-weight:700;color:var(--accent-rose);margin-bottom:6px;">MODULE 5 • ENSEMBLE</div>
+        <h4 style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--text-main);">Research-Readiness Model</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;">
+          Fuses artifact penalties, metadata completeness %, outlier ratios, and scanner heterogeneity to categorize dataset as Ready, Requires Cleaning, or Not Ready.
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size:11.5px;font-weight:700;color:var(--accent-purple);margin-bottom:6px;">EXPLAINABILITY & GENAI</div>
+        <h4 style="font-size:15px;font-weight:800;margin-bottom:8px;color:var(--text-main);">Grad-CAM & Google Gemini</h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;">
+          PyTorch Grad-CAM visual heatmaps overlaying degradation loci; Google Gemini translates structured JSON findings into scientific summaries and real-time answers.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-World Purpose & Scope Callout -->
+  <div class="card" style="border-left:4px solid var(--primary);background:var(--bg-subtle);">
+    <div style="display:flex;gap:16px;align-items:flex-start;">
+      <div style="font-size:24px;">🔬</div>
+      <div>
+        <h4 style="font-size:14px;font-weight:800;color:var(--text-main);margin-bottom:4px;">
+          Research-Support Scope & Distinction
+        </h4>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.6;">
+          NeuroData Quality AI is built specifically to automate dataset hygiene and quality assurance prior to training expensive deep learning models. It does not diagnose patients or replace clinical workflows. All core quantitative predictions are computed independently by PyTorch and Scikit-learn, with Gemini providing narrative synthesis.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

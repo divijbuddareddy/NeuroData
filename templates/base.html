@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ app_title }}{% endblock %}</title>
+  <!-- Google Fonts & Vanilla CSS Design System -->
+  <link rel="stylesheet" href="/static/css/main.css">
+  <script>
+    // Initialize theme instantly before render
+    const savedTheme = localStorage.getItem('neurodata_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+  <!-- Left Navigation Sidebar -->
+  <aside class="app-sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">Ψ</div>
+      <div>
+        <div class="brand-title">NeuroData Quality</div>
+        <div class="brand-sub">Explainable AI • QC</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Core Workflow</div>
+      <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span>Overview</span>
+      </a>
+      <a href="/upload" class="nav-link {% if request.path == '/upload' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Dataset Upload</span>
+      </a>
+      <a href="/scan-quality" class="nav-link {% if request.path == '/scan-quality' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        <span>Scan Quality</span>
+      </a>
+
+      <div class="nav-section-title">Analysis & Readiness</div>
+      <a href="/dataset-analysis" class="nav-link {% if request.path == '/dataset-analysis' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
+        <span>Dataset Analysis</span>
+      </a>
+      <a href="/research-readiness" class="nav-link {% if request.path == '/research-readiness' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+        <span>Research Readiness</span>
+      </a>
+      <a href="/assistant" class="nav-link {% if request.path == '/assistant' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><line x1="9" y1="10" x2="15" y2="10"></line></svg>
+        <span>AI Research Assistant</span>
+      </a>
+
+      <div class="nav-section-title">Diagnostics & Logs</div>
+      <a href="/model-evaluation" class="nav-link {% if request.path == '/model-evaluation' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span>Model Evaluation</span>
+      </a>
+      <a href="/history" class="nav-link {% if request.path == '/history' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <span>Audit History</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="gemini-status-card" onclick="openApiKeyModal()">
+        <div id="sidebar-gemini-dot" class="gemini-dot"></div>
+        <div class="gemini-status-text">
+          <strong id="sidebar-gemini-status">Google AI Studio</strong>
+          <span id="sidebar-gemini-sub">Click to configure key</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Layout -->
+  <main class="app-main">
+    <!-- Top Bar -->
+    <header class="top-navbar">
+      <div class="topbar-left">
+        <h1 class="page-title">{% block page_title %}Neuroimaging Quality Platform{% endblock %}</h1>
+        <span class="research-disclaimer-chip">Pre-Training Research Screening Only • Non-Diagnostic</span>
+      </div>
+      
+      <div class="topbar-right">
+        <!-- Google AI Studio API Key Manager Trigger -->
+        <button class="api-key-btn" onclick="openApiKeyModal()">
+          <span>🔑</span>
+          <span id="nav-api-key-label">Google Studio API Key</span>
+        </button>
+
+        <!-- Theme Switcher -->
+        <button id="theme-toggle-btn" class="theme-toggle-btn" onclick="toggleAppTheme()">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-label">Obsidian Dark</span>
+        </button>
+
+        {% block topbar_actions %}
+        <button id="btn-run-demo" class="btn btn-primary" style="font-size:12px;padding:7px 14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Run Sample Analysis (15 Scans)
+        </button>
+        {% endblock %}
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <div class="content-container">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Google AI Studio Key Settings Modal -->
+  <div id="api-key-modal" class="modal-backdrop">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>✨</span> Configure Google AI Studio Key
+        </div>
+        <button class="modal-close-btn" onclick="closeApiKeyModal()">&times;</button>
+      </div>
+
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;">
+        Enter your Google AI Studio API Key to enable <strong>real-time, live question answering</strong> via Gemini 2.5 Flash for neuroimaging QA, artifact analysis, and customized preprocessing recommendations.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="input-gemini-key">Google AI Studio API Key</label>
+        <input type="password" id="input-gemini-key" class="form-input" placeholder="AIzaSy..." autocomplete="off">
+      </div>
+
+      <div style="font-size:11.5px;color:var(--text-faint);margin-bottom:20px;">
+        Don't have a key? Get one for free from <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary);font-weight:700;text-decoration:none;">Google AI Studio</a>.
+      </div>
+
+      <div id="modal-key-status" style="display:none;padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:16px;"></div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button type="button" class="btn btn-secondary" onclick="closeApiKeyModal()">Cancel</button>
+        <button type="button" id="btn-save-api-key" class="btn btn-primary" onclick="saveApiKey()">Verify & Connect Live Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Scripts -->
+  <script src="/static/js/main.js"></script>
+  {% block scripts_extra %}{% endblock %}
+</body>
+</html>

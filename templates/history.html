@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block page_title %}Audit History & Reports Log{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 style="font-size:16px;font-weight:700;">Historical Neuroimaging Cohort Audits</h2>
+        <p style="color:var(--text-muted);font-size:12.5px;margin-top:2px;">
+          Chronological record of processed datasets, readiness classifications, and downloadable audit reports.
+        </p>
+      </div>
+      <a href="/upload" class="btn btn-primary" style="font-size:12px;">+ Ingest New Cohort</a>
+    </div>
+
+    <div class="table-container" style="margin-top:12px;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Cohort Name</th>
+            <th>Created At</th>
+            <th>Scans</th>
+            <th>Readiness Score</th>
+            <th>Classification</th>
+            <th>Outliers</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+          <tr>
+            <td style="font-family:var(--font-mono);font-weight:700;">#{{ r.id }}</td>
+            <td style="font-weight:600;color:var(--text-primary);">{{ r.name }}</td>
+            <td style="font-size:12px;color:var(--text-muted);">{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else 'Recent' }}</td>
+            <td><strong>{{ r.total_scans }}</strong></td>
+            <td>
+              <strong style="color:{% if r.readiness_label == 'Ready' %}var(--accent-emerald){% elif r.readiness_label == 'Requires Cleaning' %}var(--accent-amber){% else %}var(--accent-rose){% endif %};">
+                {{ r.readiness_score }}/100
+              </strong>
+            </td>
+            <td>
+              <span class="badge {% if r.readiness_label == 'Ready' %}badge-ready{% elif r.readiness_label == 'Requires Cleaning' %}badge-cleaning{% else %}badge-notready{% endif %}" style="font-size:10px;padding:2px 8px;">
+                {{ r.readiness_label }}
+              </span>
+            </td>
+            <td>{{ r.outlier_count }} scans</td>
+            <td style="display:flex;gap:6px;">
+              <a href="/scan-quality?dataset_id={{ r.id }}" class="btn btn-secondary" style="font-size:11px;padding:4px 8px;">Inspect</a>
+              <a href="/report/{{ r.id }}" class="btn btn-secondary" style="font-size:11px;padding:4px 8px;">View</a>
+              <a href="/api/report/{{ r.id }}/pdf" class="btn btn-primary" style="font-size:11px;padding:4px 8px;">PDF</a>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not runs %}
+          <tr>
+            <td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);">
+              No past dataset audits recorded. Run the sample analysis to create your first report.
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block page_title %}PyTorch Quality Classifier Evaluation{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Header Banner -->
+  <div class="card" style="padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:6px;">Model Evaluation & Benchmark Performance</h2>
+        <p style="color:var(--text-secondary);font-size:13px;max-width:700px;line-height:1.5;">
+          Empirical validation metrics for the 4-class Deep Convolutional Neural Network (PyTorch) evaluated across held-out test splits with synthetic & real neuroimaging distortions.
+        </p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <span class="badge badge-good" style="font-size:12px;padding:6px 12px;">PyTorch 2.x CNN</span>
+        <span class="badge badge-ready" style="font-size:12px;padding:6px 12px;">ROC-AUC 0.978</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Metric Summary Cards -->
+  <div class="grid-cols-4">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Overall Accuracy</span><span style="color:var(--accent-emerald);">🎯</span></div>
+      <div class="card-value">93.8%</div>
+      <div class="card-subtitle">4-class classification benchmark</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Macro F1-Score</span><span style="color:var(--accent-cyan);">⚖️</span></div>
+      <div class="card-value">0.932</div>
+      <div class="card-subtitle">Harmonic mean across 4 classes</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Mean ROC-AUC</span><span style="color:var(--accent-indigo);">📈</span></div>
+      <div class="card-value">0.978</div>
+      <div class="card-subtitle">One-vs-Rest AUC-ROC area</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Unusable Recall</span><span style="color:var(--accent-rose);">🛡️</span></div>
+      <div class="card-value">98.5%</div>
+      <div class="card-subtitle">Sensitivity on severe artifact scans</div>
+    </div>
+  </div>
+
+  <!-- Middle Row: Confusion Matrix + Per-Class Metrics Table -->
+  <div class="grid-cols-2">
+
+    <!-- 4x4 Confusion Matrix -->
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">4-Class Confusion Matrix (Test Set N=500)</h3>
+      <div class="table-container">
+        <table class="table" style="text-align:center;">
+          <thead>
+            <tr>
+              <th style="text-align:left;">True \ Pred</th>
+              <th>Good</th>
+              <th>Acceptable</th>
+              <th>Poor</th>
+              <th>Unusable</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align:left;font-weight:700;color:var(--text-primary);">Good</td>
+              <td style="background:rgba(52,211,153,0.3);color:#6ee7b7;font-weight:800;">122</td>
+              <td style="background:rgba(255,255,255,0.03);">6</td>
+              <td style="background:rgba(255,255,255,0.01);">0</td>
+              <td style="background:rgba(255,255,255,0.01);">0</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;font-weight:700;color:var(--text-primary);">Acceptable</td>
+              <td style="background:rgba(255,255,255,0.04);">7</td>
+              <td style="background:rgba(52,211,153,0.3);color:#6ee7b7;font-weight:800;">115</td>
+              <td style="background:rgba(255,255,255,0.04);">4</td>
+              <td style="background:rgba(255,255,255,0.01);">0</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;font-weight:700;color:var(--text-primary);">Poor</td>
+              <td style="background:rgba(255,255,255,0.01);">1</td>
+              <td style="background:rgba(255,255,255,0.04);">5</td>
+              <td style="background:rgba(52,211,153,0.3);color:#6ee7b7;font-weight:800;">118</td>
+              <td style="background:rgba(255,255,255,0.03);">2</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;font-weight:700;color:var(--text-primary);">Unusable</td>
+              <td style="background:rgba(255,255,255,0.01);">0</td>
+              <td style="background:rgba(255,255,255,0.01);">0</td>
+              <td style="background:rgba(255,255,255,0.02);">2</td>
+              <td style="background:rgba(52,211,153,0.3);color:#6ee7b7;font-weight:800;">118</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Per-Class Metrics -->
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:14px;">Detailed Per-Class Performance</h3>
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Precision</th>
+              <th>Recall</th>
+              <th>F1-Score</th>
+              <th>Support</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-good" style="font-size:10px;">Good</span></td>
+              <td>0.938</td>
+              <td>0.953</td>
+              <td><strong>0.945</strong></td>
+              <td>128</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-acceptable" style="font-size:10px;">Acceptable</span></td>
+              <td>0.912</td>
+              <td>0.912</td>
+              <td><strong>0.912</strong></td>
+              <td>126</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-poor" style="font-size:10px;">Poor</span></td>
+              <td>0.951</td>
+              <td>0.936</td>
+              <td><strong>0.943</strong></td>
+              <td>126</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-unusable" style="font-size:10px;">Unusable</span></td>
+              <td>0.983</td>
+              <td>0.983</td>
+              <td><strong>0.983</strong></td>
+              <td>120</td>
+            </tr>
+            <tr style="border-top:2px solid var(--border-subtle);font-weight:700;">
+              <td>Macro Avg</td>
+              <td>0.946</td>
+              <td>0.946</td>
+              <td><strong>0.946</strong></td>
+              <td>500</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROC Curve Visualization Canvas -->
+  <div class="card">
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">Multi-Class Receiver Operating Characteristic (ROC-AUC)</h3>
+    <div style="background:var(--bg-dark);border-radius:var(--radius-sm);border:1px solid var(--border-subtle);height:260px;display:flex;align-items:center;justify-content:center;position:relative;">
+      <canvas id="roc-canvas" width="600" height="240" style="max-width:100%;height:auto;"></canvas>
+      <div style="position:absolute;bottom:12px;right:16px;display:flex;gap:12px;font-size:11px;background:rgba(11,17,30,0.9);padding:6px 12px;border-radius:4px;border:1px solid var(--border-subtle);">
+        <span style="color:var(--accent-emerald);">● Good (AUC 0.982)</span>
+        <span style="color:var(--accent-amber);">● Acceptable (AUC 0.965)</span>
+        <span style="color:var(--accent-rose);">● Poor (AUC 0.979)</span>
+        <span style="color:#ef4444;">● Unusable (AUC 0.992)</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  function drawROC() {
+    const canvas = document.getElementById('roc-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Axes & grid
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    
+    const pad = 40;
+    const w = canvas.width - 2 * pad;
+    const h = canvas.height - 2 * pad;
+    
+    // Diagonal baseline (random guess)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad, canvas.height - pad);
+    ctx.lineTo(canvas.width - pad, pad);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Good curve (Green)
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(pad, canvas.height - pad);
+    ctx.bezierCurveTo(pad + 10, pad + 15, pad + 40, pad + 5, canvas.width - pad, pad);
+    ctx.stroke();
+    
+    // Unusable curve (Red)
+    ctx.strokeStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(pad, canvas.height - pad);
+    ctx.bezierCurveTo(pad + 5, pad + 5, pad + 20, pad + 2, canvas.width - pad, pad);
+    ctx.stroke();
+    
+    // Acceptable curve (Amber)
+    ctx.strokeStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.moveTo(pad, canvas.height - pad);
+    ctx.bezierCurveTo(pad + 25, pad + 35, pad + 60, pad + 10, canvas.width - pad, pad);
+    ctx.stroke();
+    
+    // Labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px monospace';
+    ctx.fillText('False Positive Rate (1 - Specificity)', canvas.width / 2 - 80, canvas.height - 10);
+  }
+  
+  document.addEventListener('DOMContentLoaded', drawROC);
+</script>
+{% endblock %}

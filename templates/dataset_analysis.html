@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block page_title %}Cohort-Level Dataset Analysis{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+  <!-- Header Cohort Switcher -->
+  <div class="card" style="padding:16px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <label for="dataset-select" style="font-size:13px;font-weight:600;color:var(--text-secondary);">Active Cohort:</label>
+        <select id="dataset-select" class="form-select" style="width:280px;" onchange="window.location.href='/dataset-analysis?dataset_id=' + this.value">
+          {% for d in all_datasets %}
+            <option value="{{ d.id }}" {% if dataset and dataset.id == d.id %}selected{% endif %}>{{ d.name }} ({{ d.total_scans }} scans)</option>
+          {% endfor %}
+          {% if not all_datasets %}<option>No datasets evaluated yet</option>{% endif %}
+        </select>
+      </div>
+
+      {% if dataset %}
+      <div>
+        <span class="badge {% if dataset.readiness_label == 'Ready' %}badge-ready{% elif dataset.readiness_label == 'Requires Cleaning' %}badge-cleaning{% else %}badge-notready{% endif %}">
+          {{ dataset.readiness_label }} (Score: {{ dataset.readiness_score }}/100)
+        </span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if dataset and scans %}
+  <!-- Top Aggregate Cards -->
+  <div class="grid-cols-4">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Quality Pass Rate</span>
+        <span style="color:var(--accent-emerald);">✓</span>
+      </div>
+      <div class="card-value">
+        {{ ((dataset.good_count + dataset.acceptable_count) / (dataset.total_scans or 1) * 100)|round(1) }}%
+      </div>
+      <div class="card-subtitle">{{ dataset.good_count }} Good • {{ dataset.acceptable_count }} Acceptable</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Degraded Scans</span>
+        <span style="color:var(--accent-rose);">⚠️</span>
+      </div>
+      <div class="card-value">{{ dataset.poor_count + dataset.unusable_count }}</div>
+      <div class="card-subtitle">{{ dataset.poor_count }} Poor • {{ dataset.unusable_count }} Unusable</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Isolation Outliers</span>
+        <span style="color:var(--accent-amber);">⚡</span>
+      </div>
+      <div class="card-value">{{ dataset.outlier_count }}</div>
+      <div class="card-subtitle">Scans flagged by Isolation Forest</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Metadata Completeness</span>
+        <span style="color:var(--accent-cyan);">📋</span>
+      </div>
+      <div class="card-value">{{ dataset.metadata_completeness_pct }}%</div>
+      <div class="card-subtitle">Standard neuroimaging tags filled</div>
+    </div>
+  </div>
+
+  <!-- Middle Row: Anomaly 2D PCA Map + Quality Distribution -->
+  <div class="grid-cols-2">
+
+    <!-- Anomaly PCA 2D Cluster Map -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 style="font-size:15px;font-weight:800;color:var(--text-main);">Cohort Feature Space & Anomaly Clustering</h3>
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
+            2D PCA projection of spatial, texture & frequency embeddings with Isolation Forest boundaries.
+          </p>
+        </div>
+      </div>
+      
+      <div style="position:relative;background:var(--bg-subtle);border-radius:var(--radius-sm);border:1px solid var(--border-light);height:320px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+        <canvas id="pca-scatter-canvas" width="480" height="300" style="max-width:100%;height:auto;"></canvas>
+        <div style="position:absolute;bottom:10px;right:12px;display:flex;gap:12px;font-size:11px;background:var(--bg-surface);padding:5px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-light);box-shadow:var(--shadow-sm);">
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--primary);"></span> Normal Inlier</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent-rose);"></span> Isolation Outlier</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Breakdown & Artifact Distribution -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 style="font-size:15px;font-weight:800;color:var(--text-main);">Quality Class Proportions</h3>
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Distribution across Good, Acceptable, Poor, and Unusable tiers.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;margin-top:8px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;">
+            <span style="color:var(--accent-emerald);font-weight:700;">Good Quality ({{ dataset.good_count }})</span>
+            <span style="font-weight:700;">{{ (dataset.good_count / (dataset.total_scans or 1) * 100)|round(1) }}%</span>
+          </div>
+          <div style="height:8px;background:var(--bg-subtle);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:{{ (dataset.good_count / (dataset.total_scans or 1) * 100) }}%;background:var(--accent-emerald);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;">
+            <span style="color:var(--accent-amber);font-weight:700;">Acceptable Quality ({{ dataset.acceptable_count }})</span>
+            <span style="font-weight:700;">{{ (dataset.acceptable_count / (dataset.total_scans or 1) * 100)|round(1) }}%</span>
+          </div>
+          <div style="height:8px;background:var(--bg-subtle);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:{{ (dataset.acceptable_count / (dataset.total_scans or 1) * 100) }}%;background:var(--accent-amber);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;">
+            <span style="color:var(--accent-rose);font-weight:700;">Poor Quality ({{ dataset.poor_count }})</span>
+            <span style="font-weight:700;">{{ (dataset.poor_count / (dataset.total_scans or 1) * 100)|round(1) }}%</span>
+          </div>
+          <div style="height:8px;background:var(--bg-subtle);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:{{ (dataset.poor_count / (dataset.total_scans or 1) * 100) }}%;background:var(--accent-rose);"></div>
+          </div>
+        </div>
+
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;">
+            <span style="color:#ef4444;font-weight:800;">Unusable ({{ dataset.unusable_count }})</span>
+            <span style="font-weight:800;color:#ef4444;">{{ (dataset.unusable_count / (dataset.total_scans or 1) * 100)|round(1) }}%</span>
+          </div>
+          <div style="height:8px;background:var(--bg-subtle);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:{{ (dataset.unusable_count / (dataset.total_scans or 1) * 100) }}%;background:#ef4444;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Row: Demographics and Scanner Heterogeneity -->
+  <div class="grid-cols-2">
+    <!-- Scanner Vendor Distribution -->
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:12px;color:var(--text-main);">Scanner Hardware Distribution</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;">
+        {% set scanners = dataset.to_dict().scanner_stats %}
+        {% for vendor, count in scanners.items() %}
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border-light);">
+          <span style="font-weight:700;color:var(--text-main);">{{ vendor }}</span>
+          <span style="color:var(--primary);font-weight:800;">{{ count }} scans</span>
+        </div>
+        {% endfor %}
+        {% if not scanners %}
+        <div style="color:var(--text-muted);">Standard Siemens/GE 3T cohort.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Demographic Bias & Parity -->
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:12px;color:var(--text-main);">Demographic Parity Check</h3>
+      {% set demo = dataset.to_dict().demographics %}
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:12.5px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border-light);">
+          <span style="color:var(--text-muted);font-weight:600;">Sex Balance:</span>
+          <strong>
+            {% for sex, cnt in demo.get('sex_distribution', {}).items() %}
+              {{ sex }}: {{ cnt }} &nbsp;
+            {% endfor %}
+          </strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg-subtle);border-radius:6px;border:1px solid var(--border-light);">
+          <span style="color:var(--text-muted);font-weight:600;">Age Profile:</span>
+          <strong>Mean: {{ demo.get('age_summary', {}).get('mean', 48) }} yrs (Range: {{ demo.get('age_summary', {}).get('min', 22) }}-{{ demo.get('age_summary', {}).get('max', 72) }})</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="card" style="text-align:center;padding:60px 20px;">
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:12px;">No Dataset Available For Analysis</h3>
+    <button onclick="triggerDemoAnalysis()" class="btn btn-primary">Run Sample Analysis (15 Scans)</button>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+  const scanList = {{ scans_dict|tojson|safe if scans_dict else '[]' }};
+  
+  function renderPCAScatter() {
+    const canvas = document.getElementById('pca-scatter-canvas');
+    if (!canvas || scanList.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw subtle grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let x = 40; x < canvas.width; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (let y = 40; y < canvas.height; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+    
+    // Find min and max of PCA coords
+    const xs = scanList.map(s => s.embedding_pca_x || 0);
+    const ys = scanList.map(s => s.embedding_pca_y || 0);
+    const minX = Math.min(...xs, -2.5), maxX = Math.max(...xs, 2.5);
+    const minY = Math.min(...ys, -2.5), maxY = Math.max(...ys, 2.5);
+    
+    const pad = 40;
+    
+    scanList.forEach(s => {
+      const px = pad + ((s.embedding_pca_x - minX) / (maxX - minX + 1e-5)) * (canvas.width - 2 * pad);
+      const py = canvas.height - (pad + ((s.embedding_pca_y - minY) / (maxY - minY + 1e-5)) * (canvas.height - 2 * pad));
+      
+      ctx.beginPath();
+      ctx.arc(px, py, s.is_outlier ? 8 : 6, 0, 2 * Math.PI);
+      
+      if (s.is_outlier) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 10;
+      } else {
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 6;
+      }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      
+      // Label scan filename
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '9px monospace';
+      ctx.fillText(s.filename.substring(0, 10), px + 10, py + 3);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderPCAScatter();
+  });
+</script>
+{% endblock %}
